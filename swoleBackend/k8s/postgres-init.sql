@@ -1,0 +1,97 @@
+-- PostgreSQL initialization script for Swole application
+-- This script creates all necessary tables and constraints
+-- To be used with Kubernetes PostgreSQL deployment
+
+-- Enable UUID extension
+CREATE EXTENSION IF NOT EXISTS "pgcrypto";
+
+-- Users table
+CREATE TABLE IF NOT EXISTS users (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    email VARCHAR(255) UNIQUE NOT NULL,
+    name VARCHAR(255),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Routines table
+CREATE TABLE IF NOT EXISTS routines (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name VARCHAR(255) UNIQUE NOT NULL,
+    description TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Workouts table
+CREATE TABLE IF NOT EXISTS workouts (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    routine_id UUID REFERENCES routines(id) ON DELETE CASCADE,
+    name VARCHAR(255) NOT NULL,
+    type VARCHAR(50),
+    exercise_type VARCHAR(50) NOT NULL,
+    weight DECIMAL,
+    time INTEGER,
+    reps INTEGER,
+    sets INTEGER,
+    description TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Week schedules table
+CREATE TABLE IF NOT EXISTS week_schedules (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    week_start DATE NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Day schedules table
+CREATE TABLE IF NOT EXISTS day_schedules (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    week_id UUID REFERENCES week_schedules(id) ON DELETE CASCADE,
+    day VARCHAR(20) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Day routines junction table
+CREATE TABLE IF NOT EXISTS day_routines (
+    day_id UUID REFERENCES day_schedules(id) ON DELETE CASCADE,
+    routine_id UUID REFERENCES routines(id) ON DELETE CASCADE,
+    position INTEGER DEFAULT 0,
+    PRIMARY KEY (day_id, routine_id)
+);
+
+-- User progress table (preserves user workout progress)
+CREATE TABLE IF NOT EXISTS user_progress (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    workout_id UUID REFERENCES workouts(id) ON DELETE CASCADE,
+    weight DECIMAL,
+    time INTEGER,
+    date DATE NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(user_id, workout_id, date)
+);
+
+-- Create indexes for better performance
+CREATE INDEX IF NOT EXISTS idx_workouts_routine_id ON workouts(routine_id);
+CREATE INDEX IF NOT EXISTS idx_user_progress_user_id ON user_progress(user_id);
+CREATE INDEX IF NOT EXISTS idx_user_progress_workout_id ON user_progress(workout_id);
+CREATE INDEX IF NOT EXISTS idx_user_progress_date ON user_progress(date);
+CREATE INDEX IF NOT EXISTS idx_week_schedules_user_id ON week_schedules(user_id);
+CREATE INDEX IF NOT EXISTS idx_day_schedules_week_id ON day_schedules(week_id);
+
+-- Insert default user if not exists
+INSERT INTO users (email, name) 
+VALUES ('user@example.com', 'Default User')
+ON CONFLICT (email) DO NOTHING;
+
+-- Log completion
+DO $$
+BEGIN
+    RAISE NOTICE 'Swole database initialization completed successfully';
+END $$;

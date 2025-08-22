@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -6,15 +6,38 @@ import {
   StyleSheet,
   TouchableOpacity,
   SafeAreaView,
+  ActivityIndicator,
 } from 'react-native';
-import { mockWeekSchedule } from '../data/mockData';
-import { DaySchedule } from '../types';
+import { ApiService } from '../services/api';
+import { DaySchedule, WeekSchedule } from '../types';
 
 interface WeekViewProps {
   navigation: any;
 }
 
 const WeekView: React.FC<WeekViewProps> = ({ navigation }) => {
+  const [weekSchedule, setWeekSchedule] = useState<WeekSchedule | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    loadWeekSchedule();
+  }, []);
+
+  const loadWeekSchedule = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const schedule = await ApiService.getWeekSchedule();
+      setWeekSchedule(schedule);
+    } catch (err) {
+      setError('Failed to load week schedule');
+      console.error('Error loading week schedule:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const getDayColor = (day: string): string => {
     const today = new Date().toLocaleDateString('en-US', { weekday: 'long' });
     return today === day ? '#4CAF50' : '#2196F3';
@@ -48,6 +71,30 @@ const WeekView: React.FC<WeekViewProps> = ({ navigation }) => {
     );
   };
 
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.centerContent}>
+          <ActivityIndicator size="large" color="#2196F3" />
+          <Text style={styles.loadingText}>Loading your schedule...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (error) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.centerContent}>
+          <Text style={styles.errorText}>{error}</Text>
+          <TouchableOpacity style={styles.retryButton} onPress={loadWeekSchedule}>
+            <Text style={styles.retryButtonText}>Retry</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
@@ -55,7 +102,7 @@ const WeekView: React.FC<WeekViewProps> = ({ navigation }) => {
         <Text style={styles.headerSubtitle}>Your workout plan for this week</Text>
       </View>
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-        {mockWeekSchedule.schedule.map(renderDay)}
+        {weekSchedule?.schedule.map(renderDay)}
       </ScrollView>
     </SafeAreaView>
   );
@@ -131,6 +178,34 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#666',
     marginTop: 2,
+  },
+  centerContent: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  loadingText: {
+    marginTop: 10,
+    fontSize: 16,
+    color: '#666',
+  },
+  errorText: {
+    fontSize: 16,
+    color: '#f44336',
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  retryButton: {
+    backgroundColor: '#2196F3',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });
 

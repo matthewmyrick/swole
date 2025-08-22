@@ -1,0 +1,118 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: swole-data-update
+  namespace: swole
+spec:
+  template:
+    spec:
+      containers:
+      - name: python-data-job
+        image: swole-python-job:latest  # Build this from your Python scripts
+        command: ["python", "/app/update_routines.py"]
+        args: ["--file", "/app/routines/routines.yaml"]
+        env:
+        - name: DB_HOST
+          value: "postgres-service"
+        - name: DB_PORT
+          value: "5432"
+        - name: DB_NAME
+          value: "swole_db"
+        - name: DB_USER
+          valueFrom:
+            secretKeyRef:
+              name: postgres-secret
+              key: username
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: postgres-secret
+              key: password
+        volumeMounts:
+        - name: routines-config
+          mountPath: /app/routines/
+        resources:
+          requests:
+            memory: "64Mi"
+            cpu: "50m"
+          limits:
+            memory: "128Mi"
+            cpu: "100m"
+      volumes:
+      - name: routines-config
+        configMap:
+          name: routines-yaml-config
+      restartPolicy: OnFailure
+  backoffLimit: 3
+---
+# ConfigMap for routines YAML file
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: routines-yaml-config
+  namespace: swole
+data:
+  routines.yaml: |
+    # This would contain your routines.yaml content
+    # You can update this ConfigMap to change routines without rebuilding images
+    version: "1.0"
+    updated: "2025-08-22"
+    
+    routines:
+      - name: "Upper Body Power"
+        description: "Intense upper body workout focusing on strength"
+        category: "strength"
+        difficulty: "intermediate"
+        duration_minutes: 45
+        workouts:
+          - name: "Bench Press"
+            type: "upper_body"
+            exercise_type: "lift"
+            default_weight: 135
+            reps: 8
+            sets: 4
+            description: "Flat bench with barbell"
+          # Add more workouts as needed...
+---
+# CronJob for regular updates (optional)
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: swole-data-update-cron
+  namespace: swole
+spec:
+  schedule: "0 2 * * *"  # Run daily at 2 AM
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+          - name: python-data-job
+            image: swole-python-job:latest
+            command: ["python", "/app/update_routines.py"]
+            args: ["--file", "/app/routines/routines.yaml"]
+            env:
+            - name: DB_HOST
+              value: "postgres-service"
+            - name: DB_PORT
+              value: "5432"
+            - name: DB_NAME
+              value: "swole_db"
+            - name: DB_USER
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: username
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: password
+            volumeMounts:
+            - name: routines-config
+              mountPath: /app/routines/
+          volumes:
+          - name: routines-config
+            configMap:
+              name: routines-yaml-config
+          restartPolicy: OnFailure

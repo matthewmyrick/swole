@@ -9,7 +9,9 @@ import {
   TextInput,
   Modal,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
+import { ApiService } from '../services/api';
 import { Routine, Workout } from '../types';
 
 interface RoutineDetailProps {
@@ -24,6 +26,7 @@ const RoutineDetail: React.FC<RoutineDetailProps> = ({ route, navigation }) => {
   const [selectedWorkout, setSelectedWorkout] = useState<Workout | null>(null);
   const [updatedWeight, setUpdatedWeight] = useState('');
   const [updatedTime, setUpdatedTime] = useState('');
+  const [saving, setSaving] = useState(false);
 
   const getWorkoutTypeColor = (workout: Workout): string => {
     if (workout.exerciseType === 'class') return '#9C27B0';
@@ -54,23 +57,41 @@ const RoutineDetail: React.FC<RoutineDetailProps> = ({ route, navigation }) => {
     setModalVisible(true);
   };
 
-  const saveUpdates = () => {
+  const saveUpdates = async () => {
     if (!selectedWorkout) return;
 
-    const updatedWorkouts = workouts.map(w => {
-      if (w.id === selectedWorkout.id) {
-        return {
-          ...w,
-          userWeight: updatedWeight ? parseFloat(updatedWeight) : w.userWeight,
-          userTime: updatedTime ? parseFloat(updatedTime) : w.userTime,
-        };
-      }
-      return w;
-    });
+    try {
+      setSaving(true);
+      
+      const userWeight = updatedWeight ? parseFloat(updatedWeight) : undefined;
+      const userTime = updatedTime ? parseFloat(updatedTime) : undefined;
 
-    setWorkouts(updatedWorkouts);
-    setModalVisible(false);
-    Alert.alert('Success', 'Progress updated successfully!');
+      await ApiService.updateWorkoutProgress(
+        selectedWorkout.id,
+        userWeight,
+        userTime
+      );
+
+      const updatedWorkouts = workouts.map(w => {
+        if (w.id === selectedWorkout.id) {
+          return {
+            ...w,
+            userWeight: userWeight || w.userWeight,
+            userTime: userTime || w.userTime,
+          };
+        }
+        return w;
+      });
+
+      setWorkouts(updatedWorkouts);
+      setModalVisible(false);
+      Alert.alert('Success', 'Progress updated successfully!');
+    } catch (error) {
+      console.error('Failed to save progress:', error);
+      Alert.alert('Error', 'Failed to save progress. Please try again.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const renderWorkout = (workout: Workout) => {
@@ -209,10 +230,15 @@ const RoutineDetail: React.FC<RoutineDetailProps> = ({ route, navigation }) => {
                 <Text style={styles.cancelButtonText}>Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={[styles.modalButton, styles.saveButton]}
+                style={[styles.modalButton, styles.saveButton, saving && styles.disabledButton]}
                 onPress={saveUpdates}
+                disabled={saving}
               >
-                <Text style={styles.saveButtonText}>Save</Text>
+                {saving ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <Text style={styles.saveButtonText}>Save</Text>
+                )}
               </TouchableOpacity>
             </View>
           </View>
@@ -406,6 +432,9 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#fff',
     fontWeight: 'bold',
+  },
+  disabledButton: {
+    opacity: 0.6,
   },
 });
 

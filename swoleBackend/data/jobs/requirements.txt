@@ -1,0 +1,17 @@
+# Python dependencies for Swole data jobs
+# Install with: pip install -r requirements.txt
+
+# Database connectivity
+psycopg2-binary==2.9.9
+
+# YAML parsing
+PyYAML==6.0.1
+
+# Environment variable management
+python-dotenv==1.0.0
+
+# Optional: For enhanced CLI experience
+click==8.1.7
+
+# Optional: For data validation
+pydantic==2.5.2

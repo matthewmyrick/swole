@@ -1,0 +1,227 @@
+# Swole Workout Routines Configuration
+# This file defines all workout routines and their exercises
+# User progress (weights/times) are tracked separately in the database
+
+version: "1.0"
+updated: "2025-08-22"
+
+routines:
+  - name: "Upper Body Power"
+    description: "Intense upper body workout focusing on strength"
+    category: "strength"
+    difficulty: "intermediate"
+    duration_minutes: 45
+    workouts:
+      - name: "Bench Press"
+        type: "upper_body"
+        exercise_type: "lift"
+        default_weight: 135
+        reps: 8
+        sets: 4
+        description: "Flat bench with barbell"
+        instructions: "Lower bar to chest, press up explosively"
+        muscle_groups: ["chest", "triceps", "shoulders"]
+        
+      - name: "Pull-ups"
+        type: "upper_body"
+        exercise_type: "lift"
+        default_weight: null
+        reps: 10
+        sets: 3
+        description: "Wide grip pull-ups"
+        instructions: "Hang from bar, pull up until chin over bar"
+        muscle_groups: ["back", "biceps"]
+        
+      - name: "Shoulder Press"
+        type: "upper_body"
+        exercise_type: "lift"
+        default_weight: 95
+        reps: 10
+        sets: 3
+        description: "Overhead press with barbell"
+        instructions: "Press barbell from shoulders to overhead"
+        muscle_groups: ["shoulders", "triceps"]
+
+  - name: "Leg Day"
+    description: "Complete lower body workout"
+    category: "strength"
+    difficulty: "intermediate"
+    duration_minutes: 60
+    workouts:
+      - name: "Squats"
+        type: "lower_body"
+        exercise_type: "lift"
+        default_weight: 225
+        reps: 8
+        sets: 4
+        description: "Back squats with proper depth"
+        instructions: "Squat down until thighs parallel to floor"
+        muscle_groups: ["quadriceps", "glutes", "hamstrings"]
+        
+      - name: "Romanian Deadlifts"
+        type: "lower_body"
+        exercise_type: "lift"
+        default_weight: 185
+        reps: 10
+        sets: 3
+        description: "Focus on hamstring stretch"
+        instructions: "Hinge at hips, lower bar while keeping legs straight"
+        muscle_groups: ["hamstrings", "glutes", "lower_back"]
+        
+      - name: "Leg Press"
+        type: "lower_body"
+        exercise_type: "lift"
+        default_weight: 360
+        reps: 12
+        sets: 3
+        description: "Full range of motion"
+        instructions: "Press weight with legs, full extension"
+        muscle_groups: ["quadriceps", "glutes"]
+
+  - name: "Core Circuit"
+    description: "Abs and core strengthening"
+    category: "core"
+    difficulty: "beginner"
+    duration_minutes: 30
+    workouts:
+      - name: "Plank"
+        type: "abs"
+        exercise_type: "timed"
+        default_time: 60
+        sets: 3
+        description: "Hold plank position"
+        instructions: "Hold straight body position on forearms"
+        muscle_groups: ["core", "shoulders"]
+        
+      - name: "Russian Twists"
+        type: "abs"
+        exercise_type: "lift"
+        default_weight: 25
+        reps: 20
+        sets: 3
+        description: "With medicine ball"
+        instructions: "Sit with knees bent, rotate torso side to side"
+        muscle_groups: ["obliques", "core"]
+        
+      - name: "Leg Raises"
+        type: "abs"
+        exercise_type: "lift"
+        reps: 15
+        sets: 3
+        description: "Hanging leg raises"
+        instructions: "Hang from bar, raise legs to horizontal"
+        muscle_groups: ["lower_abs", "hip_flexors"]
+
+  - name: "Basketball Practice"
+    description: "Weekly basketball session"
+    category: "activity"
+    difficulty: "moderate"
+    duration_minutes: 90
+    workouts:
+      - name: "Basketball"
+        type: null
+        exercise_type: "activity"
+        default_time: 90
+        description: "Full court games and drills"
+        instructions: "Mix of shooting drills, scrimmage, and conditioning"
+        muscle_groups: ["full_body", "cardio"]
+        equipment: ["basketball", "court"]
+
+  - name: "Yoga Class"
+    description: "Flexibility and mindfulness"
+    category: "flexibility"
+    difficulty: "beginner"
+    duration_minutes: 60
+    workouts:
+      - name: "Vinyasa Yoga"
+        type: null
+        exercise_type: "class"
+        default_time: 60
+        description: "Flow yoga class"
+        instructions: "Follow instructor through flowing sequences"
+        muscle_groups: ["full_body", "flexibility"]
+        equipment: ["yoga_mat"]
+
+  - name: "HIIT Cardio"
+    description: "High intensity interval training"
+    category: "cardio"
+    difficulty: "advanced"
+    duration_minutes: 25
+    workouts:
+      - name: "Burpees"
+        type: "abs"
+        exercise_type: "timed"
+        default_time: 30
+        sets: 4
+        description: "Full body explosive movement"
+        instructions: "Squat, jump back to plank, push-up, jump forward, jump up"
+        muscle_groups: ["full_body", "cardio"]
+        
+      - name: "Mountain Climbers"
+        type: "abs"
+        exercise_type: "timed"
+        default_time: 30
+        sets: 4
+        description: "Fast alternating knee drives"
+        instructions: "Plank position, alternate bringing knees to chest quickly"
+        muscle_groups: ["core", "cardio", "shoulders"]
+        
+      - name: "Jump Squats"
+        type: "lower_body"
+        exercise_type: "timed"
+        default_time: 30
+        sets: 4
+        description: "Explosive squat jumps"
+        instructions: "Squat down, jump up explosively, land softly"
+        muscle_groups: ["quadriceps", "glutes", "calves"]
+
+# Weekly Schedule Template
+# Users can customize their weekly schedule in the app
+default_schedule:
+  monday: ["Upper Body Power"]
+  tuesday: ["Leg Day"]
+  wednesday: ["Yoga Class"]
+  thursday: ["Upper Body Power"]
+  friday: ["Leg Day"]
+  saturday: ["Core Circuit", "Basketball Practice"]
+  sunday: [] # Rest day
+
+# Exercise Categories for filtering
+categories:
+  - name: "strength"
+    description: "Weight lifting and resistance training"
+    
+  - name: "cardio"
+    description: "Cardiovascular and endurance training"
+    
+  - name: "flexibility"
+    description: "Stretching and mobility work"
+    
+  - name: "activity"
+    description: "Sports and recreational activities"
+    
+  - name: "core"
+    description: "Core and abdominal focused workouts"
+
+# Difficulty Levels
+difficulty_levels:
+  - name: "beginner"
+    description: "New to exercise or this type of training"
+    
+  - name: "intermediate"
+    description: "Some experience with exercise"
+    
+  - name: "advanced"
+    description: "Experienced with this type of training"
+
+# Equipment List
+equipment:
+  - barbell
+  - dumbbells
+  - pull_up_bar
+  - bench
+  - leg_press_machine
+  - medicine_ball
+  - yoga_mat
+  - basketball
+  - court
