@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: swole-api-service
+  namespace: swole
+  labels:
+    app.kubernetes.io/name: swole
+    app.kubernetes.io/component: api
+spec:
+  type: NodePort
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
+      nodePort: 30080
+      protocol: TCP
+  selector:
+    app.kubernetes.io/name: swole
+    app.kubernetes.io/component: api

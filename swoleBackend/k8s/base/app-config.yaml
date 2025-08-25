@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-config
+  namespace: swole
+  labels:
+    app.kubernetes.io/name: swole
+    app.kubernetes.io/component: config
+data:
+  PORT: "8080"
+  GIN_MODE: "release"
+  DB_HOST: "postgres-service.swole.svc.cluster.local"
+  DB_PORT: "5432"
+  DB_NAME: "swole_db"

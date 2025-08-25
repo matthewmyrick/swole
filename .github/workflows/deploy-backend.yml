@@ -1,0 +1,128 @@
+name: Deploy Swole Backend
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'swoleBackend/**'
+      - '.github/workflows/deploy-backend.yml'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'swoleBackend/**'
+  workflow_dispatch:  # Allow manual triggering
+
+jobs:
+  deploy:
+    name: Build and Deploy to Kubernetes
+    runs-on: apollo-runners  # Your self-hosted runner
+    
+    defaults:
+      run:
+        working-directory: ./swoleBackend
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+        
+      - name: Build Docker image
+        run: |
+          echo "🏗️ Building Docker image..."
+          docker build -t swole-api:${{ github.sha }} -f Dockerfile.api .
+          docker tag swole-api:${{ github.sha }} swole-api:latest
+          echo "✅ Docker image built successfully"
+          
+      - name: Verify kubectl access
+        run: |
+          echo "🔍 Checking Kubernetes cluster access..."
+          kubectl cluster-info
+          kubectl get nodes
+          echo "✅ Kubernetes cluster is accessible"
+          
+      - name: Deploy to Kubernetes
+        run: |
+          echo "📦 Deploying to Kubernetes..."
+          
+          # Update kustomization with new image tag
+          cd k8s/base
+          sed -i.bak "s/swole-api:latest/swole-api:${{ github.sha }}/g" kustomization.yaml
+          
+          # Apply the deployment
+          kubectl apply -k .
+          
+          echo "⏳ Waiting for deployment to be ready..."
+          kubectl wait --for=condition=ready pod -l app.kubernetes.io/component=postgres -n swole --timeout=300s
+          kubectl wait --for=condition=ready pod -l app.kubernetes.io/component=api -n swole --timeout=300s
+          
+          echo "✅ Deployment completed successfully!"
+          
+      - name: Run database seed job
+        run: |
+          echo "🌱 Running database seed job..."
+          
+          # Delete existing seed job if it exists
+          kubectl delete job swole-seed-job -n swole --ignore-not-found=true
+          
+          # Apply seed job
+          kubectl apply -f k8s/base/seed-job.yaml
+          
+          # Wait for seed job to complete
+          kubectl wait --for=condition=complete job/swole-seed-job -n swole --timeout=300s
+          
+          echo "✅ Database seeded successfully!"
+          
+      - name: Get deployment info
+        run: |
+          echo "📋 Deployment Information:"
+          echo "=================================="
+          
+          # Get service information
+          echo "🌐 Services:"
+          kubectl get services -n swole
+          echo ""
+          
+          # Get pod status
+          echo "📦 Pods:"
+          kubectl get pods -n swole
+          echo ""
+          
+          # Get NodePort info for API access
+          NODE_PORT=$(kubectl get svc swole-api-service -n swole -o jsonpath='{.spec.ports[0].nodePort}')
+          NODE_IP=$(kubectl get nodes -o jsonpath='{.items[0].status.addresses[?(@.type=="InternalIP")].address}')
+          
+          echo "🚀 API is accessible at:"
+          echo "   Health check: http://$NODE_IP:$NODE_PORT/health"
+          echo "   API endpoints: http://$NODE_IP:$NODE_PORT/api/"
+          echo ""
+          
+          # Test health endpoint
+          echo "🔍 Testing health endpoint..."
+          if curl -f -s "http://$NODE_IP:$NODE_PORT/health" > /dev/null; then
+            echo "✅ Health check passed"
+          else
+            echo "❌ Health check failed"
+            exit 1
+          fi
+          
+      - name: Cleanup old images
+        run: |
+          echo "🧹 Cleaning up old Docker images..."
+          # Keep last 3 images, remove older ones
+          docker images swole-api --format "table {{.ID}}\t{{.CreatedAt}}" | tail -n +4 | awk '{print $1}' | xargs -r docker rmi || true
+          echo "✅ Cleanup completed"
+          
+      - name: Send notification on failure
+        if: failure()
+        run: |
+          echo "❌ Deployment failed!"
+          echo "Check the logs above for details."
+          
+          # Get recent pod logs for debugging
+          echo "📋 Recent API logs:"
+          kubectl logs --tail=50 -l app.kubernetes.io/component=api -n swole || true
+          
+          echo "📋 Recent PostgreSQL logs:"
+          kubectl logs --tail=50 -l app.kubernetes.io/component=postgres -n swole || true

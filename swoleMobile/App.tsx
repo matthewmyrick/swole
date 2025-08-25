@@ -2,12 +2,15 @@ import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { Text, View, StyleSheet } from 'react-native';
+import { Text, View, StyleSheet, Platform } from 'react-native';
+import Icon from './src/components/Icon';
+import { LinearGradient } from 'expo-linear-gradient';
 
 import WeekView from './src/screens/WeekView';
 import RoutinesList from './src/screens/RoutinesList';
 import RoutineDetail from './src/screens/RoutineDetail';
 import DayDetail from './src/screens/DayDetail';
+import { colors, spacing, borderRadius } from './src/theme/colors';
 
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -31,6 +34,8 @@ function RoutinesStack() {
     <Stack.Navigator
       screenOptions={{
         headerShown: false,
+        gestureEnabled: true,
+        gestureDirection: 'horizontal',
       }}
     >
       <Stack.Screen name="RoutinesList" component={RoutinesList} />
@@ -42,23 +47,43 @@ function RoutinesStack() {
 const tabIconStyles = StyleSheet.create({
   container: {
     alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: spacing.xs,
+    width: 80,
+    minWidth: 80,
   },
-  icon: {
-    fontSize: 24,
-    marginBottom: 4,
+  iconWrapper: {
+    width: 44,
+    height: 44,
+    borderRadius: borderRadius.lg,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.xs,
+  },
+  iconWrapperFocused: {
+    transform: [{ scale: 1.1 }],
   },
   label: {
-    fontSize: 12,
+    fontSize: 11,
+    fontWeight: '500',
+    textAlign: 'center',
+    width: '100%',
   },
   labelFocused: {
-    fontSize: 12,
-    color: '#2196F3',
-    fontWeight: '600',
+    color: colors.primary.main,
+    fontWeight: '700',
   },
   labelUnfocused: {
-    fontSize: 12,
-    color: '#999',
-    fontWeight: '400',
+    color: colors.text.tertiary,
+    fontWeight: '500',
+  },
+  tabBar: {
+    backgroundColor: colors.background.secondary,
+    borderTopWidth: 0,
+    height: Platform.OS === 'ios' ? 100 : 80,
+    paddingBottom: Platform.OS === 'ios' ? spacing.xl : spacing.md,
+    paddingTop: spacing.md,
+    ...colors.shadow.lg,
   },
 });
 
@@ -69,14 +94,8 @@ function App(): React.JSX.Element {
         screenOptions={{
           headerShown: false,
           tabBarShowLabel: false,
-          tabBarStyle: {
-            backgroundColor: '#fff',
-            borderTopWidth: 1,
-            borderTopColor: '#e0e0e0',
-            height: 80,
-            paddingBottom: 10,
-            paddingTop: 10,
-          },
+          tabBarStyle: tabIconStyles.tabBar,
+          tabBarHideOnKeyboard: true,
         }}
       >
         <Tab.Screen 
@@ -85,8 +104,32 @@ function App(): React.JSX.Element {
           options={{
             tabBarIcon: ({ focused }) => (
               <View style={tabIconStyles.container}>
-                <Text style={tabIconStyles.icon}>📅</Text>
-                <Text style={focused ? tabIconStyles.labelFocused : tabIconStyles.labelUnfocused}>
+                <View style={[
+                  tabIconStyles.iconWrapper,
+                  focused && tabIconStyles.iconWrapperFocused,
+                ]}>
+                  {focused ? (
+                    <LinearGradient
+                      colors={colors.primary.gradient}
+                      style={{
+                        position: 'absolute',
+                        width: '100%',
+                        height: '100%',
+                        borderRadius: borderRadius.xl,
+                        opacity: 0.15,
+                      }}
+                    />
+                  ) : null}
+                  <Icon 
+                    name="calendar-outline" 
+                    size={22} 
+                    color={focused ? colors.primary.main : colors.text.tertiary}
+                  />
+                </View>
+                <Text style={[
+                  tabIconStyles.label,
+                  focused ? tabIconStyles.labelFocused : tabIconStyles.labelUnfocused
+                ]}>
                   Week
                 </Text>
               </View>
@@ -99,8 +142,32 @@ function App(): React.JSX.Element {
           options={{
             tabBarIcon: ({ focused }) => (
               <View style={tabIconStyles.container}>
-                <Text style={tabIconStyles.icon}>💪</Text>
-                <Text style={focused ? tabIconStyles.labelFocused : tabIconStyles.labelUnfocused}>
+                <View style={[
+                  tabIconStyles.iconWrapper,
+                  focused && tabIconStyles.iconWrapperFocused,
+                ]}>
+                  {focused ? (
+                    <LinearGradient
+                      colors={colors.secondary.gradient}
+                      style={{
+                        position: 'absolute',
+                        width: '100%',
+                        height: '100%',
+                        borderRadius: borderRadius.xl,
+                        opacity: 0.15,
+                      }}
+                    />
+                  ) : null}
+                  <Icon 
+                    name="fitness-outline" 
+                    size={22} 
+                    color={focused ? colors.secondary.main : colors.text.tertiary}
+                  />
+                </View>
+                <Text style={[
+                  tabIconStyles.label,
+                  focused ? tabIconStyles.labelFocused : tabIconStyles.labelUnfocused
+                ]}>
                   Routines
                 </Text>
               </View>

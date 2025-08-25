@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -6,79 +6,209 @@ import {
   StyleSheet,
   TouchableOpacity,
   SafeAreaView,
+  Animated,
+  Dimensions,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import Icon from '../components/Icon';
 import { mockRoutines } from '../data/mockData';
 import { Routine } from '../types';
+import { colors, spacing, borderRadius, typography } from '../theme/colors';
 
 interface RoutinesListProps {
   navigation: any;
 }
 
+const { width } = Dimensions.get('window');
+
 const RoutinesList: React.FC<RoutinesListProps> = ({ navigation }) => {
-  const getRoutineTypeColor = (routine: Routine): string => {
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const scaleAnim = useRef(new Animated.Value(0.95)).current;
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 500,
+        useNativeDriver: true,
+      }),
+      Animated.spring(scaleAnim, {
+        toValue: 1,
+        tension: 20,
+        friction: 7,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, []);
+
+  const getRoutineTypeInfo = (routine: Routine) => {
     const firstWorkout = routine.workouts[0];
-    if (!firstWorkout) return '#9E9E9E';
+    if (!firstWorkout) return { 
+      color: colors.neutral.gray400, 
+      gradient: [colors.neutral.gray400, colors.neutral.gray300],
+      icon: 'barbell',
+      label: 'General'
+    };
     
-    if (firstWorkout.exerciseType === 'class') return '#9C27B0';
-    if (firstWorkout.exerciseType === 'activity') return '#FF9800';
-    if (firstWorkout.type === 'upper_body') return '#2196F3';
-    if (firstWorkout.type === 'lower_body') return '#4CAF50';
-    if (firstWorkout.type === 'abs') return '#F44336';
+    if (firstWorkout.exerciseType === 'class') return {
+      color: colors.workoutTypes.class.main,
+      gradient: colors.workoutTypes.class.gradient,
+      icon: 'people',
+      label: 'Class'
+    };
     
-    return '#9E9E9E';
+    if (firstWorkout.exerciseType === 'activity') return {
+      color: colors.workoutTypes.activity.main,
+      gradient: colors.workoutTypes.activity.gradient,
+      icon: 'walk',
+      label: 'Activity'
+    };
+    
+    if (firstWorkout.type === 'upper_body') return {
+      color: colors.workoutTypes.upperBody.main,
+      gradient: colors.workoutTypes.upperBody.gradient,
+      icon: 'body',
+      label: 'Upper Body'
+    };
+    
+    if (firstWorkout.type === 'lower_body') return {
+      color: colors.workoutTypes.lowerBody.main,
+      gradient: colors.workoutTypes.lowerBody.gradient,
+      icon: 'footsteps',
+      label: 'Lower Body'
+    };
+    
+    if (firstWorkout.type === 'abs') return {
+      color: colors.workoutTypes.core.main,
+      gradient: colors.workoutTypes.core.gradient,
+      icon: 'fitness',
+      label: 'Core'
+    };
+    
+    return {
+      color: colors.neutral.gray400,
+      gradient: [colors.neutral.gray400, colors.neutral.gray300],
+      icon: 'barbell',
+      label: 'General'
+    };
   };
 
-  const getRoutineTypeLabel = (routine: Routine): string => {
-    const firstWorkout = routine.workouts[0];
-    if (!firstWorkout) return 'General';
-    
-    if (firstWorkout.exerciseType === 'class') return 'Class';
-    if (firstWorkout.exerciseType === 'activity') return 'Activity';
-    if (firstWorkout.type === 'upper_body') return 'Upper Body';
-    if (firstWorkout.type === 'lower_body') return 'Lower Body';
-    if (firstWorkout.type === 'abs') return 'Core';
-    
-    return 'General';
-  };
+  const renderRoutine = (routine: Routine, index: number) => {
+    const typeInfo = getRoutineTypeInfo(routine);
+    const delay = index * 50;
 
-  const renderRoutine = (routine: Routine) => {
-    const typeColor = getRoutineTypeColor(routine);
-    const typeLabel = getRoutineTypeLabel(routine);
+    const animatedStyle = {
+      opacity: fadeAnim,
+      transform: [
+        { scale: scaleAnim },
+        {
+          translateY: fadeAnim.interpolate({
+            inputRange: [0, 1],
+            outputRange: [20, 0],
+          }),
+        },
+      ],
+    };
 
     return (
-      <TouchableOpacity
+      <Animated.View
         key={routine.id}
-        style={styles.routineCard}
-        onPress={() => navigation.navigate('RoutineDetail', { routine })}
+        style={[
+          animatedStyle,
+          {
+            marginBottom: spacing.md,
+            ...(index === 0 ? { marginTop: spacing.sm } : {}),
+          },
+        ]}
       >
-        <View style={[styles.routineTypeIndicator, { backgroundColor: typeColor }]} />
-        <View style={styles.routineContent}>
-          <View style={styles.routineHeader}>
-            <Text style={styles.routineName}>{routine.name}</Text>
-            <View style={[styles.typeBadge, { backgroundColor: typeColor + '20' }]}>
-              <Text style={[styles.typeText, { color: typeColor }]}>{typeLabel}</Text>
+        <TouchableOpacity
+          activeOpacity={0.9}
+          onPress={() => navigation.navigate('RoutineDetail', { routine })}
+        >
+          <View style={styles.routineCard}>
+            <LinearGradient
+              colors={typeInfo.gradient}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.routineIconContainer}
+            >
+              <Icon name={typeInfo.icon} size={28} color={colors.text.inverse} />
+            </LinearGradient>
+            
+            <View style={styles.routineContent}>
+              <View style={styles.routineHeader}>
+                <View style={styles.routineInfo}>
+                  <Text style={styles.routineName} numberOfLines={2}>
+                    {routine.name}
+                  </Text>
+                  <View style={styles.typeBadge}>
+                    <View 
+                      style={[
+                        styles.typeDot, 
+                        { backgroundColor: typeInfo.color }
+                      ]} 
+                    />
+                    <Text style={styles.typeText}>{typeInfo.label}</Text>
+                  </View>
+                </View>
+                <Icon name="chevron-forward" size={20} color={colors.text.tertiary} />
+              </View>
+              
+              {routine.description && (
+                <Text style={styles.routineDescription} numberOfLines={2}>
+                  {routine.description}
+                </Text>
+              )}
+              
+              <View style={styles.routineStats}>
+                <View style={styles.statItem}>
+                  <Icon name="barbell-outline" size={16} color={colors.text.tertiary} />
+                  <Text style={styles.statText}>{routine.workouts.length} exercises</Text>
+                </View>
+                <View style={styles.statDivider} />
+                <View style={styles.statItem}>
+                  <Icon name="time-outline" size={16} color={colors.text.tertiary} />
+                  <Text style={styles.statText}>~45 min</Text>
+                </View>
+              </View>
             </View>
           </View>
-          {routine.description && (
-            <Text style={styles.routineDescription}>{routine.description}</Text>
-          )}
-          <View style={styles.routineStats}>
-            <Text style={styles.statText}>{routine.workouts.length} exercises</Text>
-          </View>
-        </View>
-      </TouchableOpacity>
+        </TouchableOpacity>
+      </Animated.View>
     );
   };
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Routines</Text>
-        <Text style={styles.headerSubtitle}>Your workout routines</Text>
-      </View>
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-        {mockRoutines.map(renderRoutine)}
-      </ScrollView>
+      <LinearGradient
+        colors={colors.background.gradient}
+        style={styles.gradientBackground}
+      >
+        <View style={styles.header}>
+          <View style={styles.headerContent}>
+            <Text style={styles.headerTitle}>Routines</Text>
+            <Text style={styles.headerSubtitle}>Your workout library</Text>
+          </View>
+          <TouchableOpacity style={styles.addButton}>
+            <LinearGradient
+              colors={colors.primary.gradient}
+              style={styles.addButtonGradient}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+            >
+              <Icon name="add" size={24} color={colors.text.inverse} />
+            </LinearGradient>
+          </TouchableOpacity>
+        </View>
+        
+        <ScrollView 
+          style={styles.scrollView} 
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.scrollContent}
+        >
+          {mockRoutines.map((routine, index) => renderRoutine(routine, index))}
+        </ScrollView>
+      </LinearGradient>
     </SafeAreaView>
   );
 };
@@ -86,83 +216,120 @@ const RoutinesList: React.FC<RoutinesListProps> = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+  },
+  gradientBackground: {
+    flex: 1,
   },
   header: {
-    backgroundColor: '#fff',
-    padding: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.lg,
+    paddingBottom: spacing.md,
+  },
+  headerContent: {
+    flex: 1,
   },
   headerTitle: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#333',
+    ...typography.h1,
+    color: colors.text.primary,
+    marginBottom: spacing.xs,
   },
   headerSubtitle: {
-    fontSize: 14,
-    color: '#666',
-    marginTop: 5,
+    ...typography.body2,
+    color: colors.text.secondary,
+  },
+  addButton: {
+    borderRadius: borderRadius.round,
+    overflow: 'hidden',
+    ...colors.shadow.md,
+  },
+  addButtonGradient: {
+    width: 48,
+    height: 48,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   scrollView: {
     flex: 1,
-    padding: 15,
+  },
+  scrollContent: {
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.xl,
   },
   routineCard: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    marginBottom: 15,
+    backgroundColor: colors.background.secondary,
+    borderRadius: borderRadius.xl,
     flexDirection: 'row',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 3.84,
-    elevation: 5,
-    overflow: 'hidden',
+    padding: spacing.md,
+    minHeight: 100,
+    ...colors.shadow.md,
   },
-  routineTypeIndicator: {
-    width: 4,
+  routineIconContainer: {
+    width: 60,
+    height: 60,
+    borderRadius: borderRadius.lg,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: spacing.md,
   },
   routineContent: {
     flex: 1,
-    padding: 15,
   },
   routineHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
+    alignItems: 'flex-start',
+    marginBottom: spacing.xs,
   },
-  routineName: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#333',
+  routineInfo: {
     flex: 1,
   },
+  routineName: {
+    ...typography.h5,
+    color: colors.text.primary,
+    marginBottom: spacing.xs,
+  },
   typeBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-    marginLeft: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
+  typeDot: {
+    width: 8,
+    height: 8,
+    borderRadius: borderRadius.round,
   },
   typeText: {
-    fontSize: 12,
+    ...typography.caption,
+    color: colors.text.secondary,
     fontWeight: '600',
   },
   routineDescription: {
-    fontSize: 14,
-    color: '#666',
-    marginBottom: 10,
+    ...typography.body2,
+    color: colors.text.secondary,
+    marginBottom: spacing.sm,
+    lineHeight: 18,
   },
   routineStats: {
     flexDirection: 'row',
+    alignItems: 'center',
+  },
+  statItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
   },
   statText: {
-    fontSize: 14,
-    color: '#999',
+    ...typography.caption,
+    color: colors.text.tertiary,
+  },
+  statDivider: {
+    width: 1,
+    height: 12,
+    backgroundColor: colors.border.light,
+    marginHorizontal: spacing.sm,
   },
 });
 

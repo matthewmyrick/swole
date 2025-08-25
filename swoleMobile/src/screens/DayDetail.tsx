@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -6,8 +6,12 @@ import {
   StyleSheet,
   TouchableOpacity,
   SafeAreaView,
+  Animated,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import Icon from '../components/Icon';
 import { DaySchedule } from '../types';
+import { colors, spacing, borderRadius, typography } from '../theme/colors';
 
 interface DayDetailProps {
   route: any;
@@ -16,58 +20,145 @@ interface DayDetailProps {
 
 const DayDetail: React.FC<DayDetailProps> = ({ route, navigation }) => {
   const { daySchedule }: { daySchedule: DaySchedule } = route.params;
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(20)).current;
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 400,
+        useNativeDriver: true,
+      }),
+      Animated.spring(slideAnim, {
+        toValue: 0,
+        tension: 20,
+        friction: 7,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, []);
+
+  const animatedStyle = {
+    opacity: fadeAnim,
+    transform: [{ translateY: slideAnim }],
+  };
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-          <Text style={styles.backButtonText}>← Back</Text>
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>{daySchedule.day}</Text>
-        <Text style={styles.headerSubtitle}>
-          {daySchedule.routines.length === 0
-            ? 'Rest Day'
-            : `${daySchedule.routines.length} routine${daySchedule.routines.length > 1 ? 's' : ''} scheduled`}
-        </Text>
-      </View>
-
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-        {daySchedule.routines.length === 0 ? (
-          <View style={styles.restDayContainer}>
-            <Text style={styles.restDayTitle}>Rest & Recovery</Text>
-            <Text style={styles.restDayText}>
-              Take this day to rest and let your muscles recover.
+      <LinearGradient
+        colors={colors.background.gradient}
+        style={styles.gradientBackground}
+      >
+        <View style={styles.header}>
+          <TouchableOpacity 
+            onPress={() => navigation.goBack()} 
+            style={styles.backButton}
+            activeOpacity={0.7}
+          >
+            <Icon name="arrow-back" size={24} color={colors.primary.main} />
+          </TouchableOpacity>
+          
+          <View style={styles.headerContent}>
+            <Text style={styles.headerTitle}>{daySchedule.day}</Text>
+            <Text style={styles.headerSubtitle}>
+              {daySchedule.routines.length === 0
+                ? 'Rest & Recovery'
+                : `${daySchedule.routines.length} routine${daySchedule.routines.length > 1 ? 's' : ''} scheduled`}
             </Text>
           </View>
-        ) : (
-          daySchedule.routines.map((routine, index) => (
-            <TouchableOpacity
-              key={routine.id}
-              style={styles.routineCard}
-              onPress={() => navigation.navigate('RoutineDetail', { routine })}
-            >
-              <View style={styles.routineHeader}>
-                <Text style={styles.routineNumber}>Routine {index + 1}</Text>
-              </View>
-              <Text style={styles.routineName}>{routine.name}</Text>
-              {routine.description && (
-                <Text style={styles.routineDescription}>{routine.description}</Text>
-              )}
-              <View style={styles.workoutsList}>
-                {routine.workouts.map((workout, wIndex) => (
-                  <View key={workout.id} style={styles.workoutItem}>
-                    <Text style={styles.workoutNumber}>{wIndex + 1}.</Text>
-                    <Text style={styles.workoutName}>{workout.name}</Text>
+        </View>
+
+        <ScrollView 
+          style={styles.scrollView} 
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.scrollContent}
+        >
+          <Animated.View style={animatedStyle}>
+            {daySchedule.routines.length === 0 ? (
+              <LinearGradient
+                colors={colors.success.gradient}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.restDayGradient}
+              >
+                <View style={styles.restDayContainer}>
+                  <Icon name="moon" size={48} color={colors.text.inverse} />
+                  <Text style={styles.restDayTitle}>Rest & Recovery</Text>
+                  <Text style={styles.restDayText}>
+                    Take this day to rest and let your muscles recover. Stay hydrated and get good sleep!
+                  </Text>
+                </View>
+              </LinearGradient>
+            ) : (
+              daySchedule.routines.map((routine, index) => (
+                <TouchableOpacity
+                  key={routine.id}
+                  activeOpacity={0.9}
+                  onPress={() => navigation.navigate('RoutineDetail', { routine })}
+                  style={{ marginBottom: spacing.md }}
+                >
+                  <View style={styles.routineCard}>
+                    <LinearGradient
+                      colors={colors.primary.gradient}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 1 }}
+                      style={styles.routineNumberContainer}
+                    >
+                      <Text style={styles.routineNumberText}>{index + 1}</Text>
+                    </LinearGradient>
+                    
+                    <View style={styles.routineContent}>
+                      <View style={styles.routineHeader}>
+                        <Text style={styles.routineName}>{routine.name}</Text>
+                        <Icon name="chevron-forward" size={20} color={colors.text.tertiary} />
+                      </View>
+                      
+                      {routine.description && (
+                        <Text style={styles.routineDescription} numberOfLines={2}>
+                          {routine.description}
+                        </Text>
+                      )}
+                      
+                      <View style={styles.workoutsList}>
+                        {routine.workouts.slice(0, 3).map((workout, wIndex) => (
+                          <View key={workout.id} style={styles.workoutItem}>
+                            <Icon 
+                              name="checkmark-circle" 
+                              size={16} 
+                              color={colors.primary.light} 
+                            />
+                            <Text style={styles.workoutName} numberOfLines={1}>
+                              {workout.name}
+                            </Text>
+                          </View>
+                        ))}
+                        {routine.workouts.length > 3 && (
+                          <Text style={styles.moreWorkouts}>
+                            +{routine.workouts.length - 3} more exercises
+                          </Text>
+                        )}
+                      </View>
+                      
+                      <View style={styles.viewDetailsButton}>
+                        <LinearGradient
+                          colors={colors.primary.gradient}
+                          start={{ x: 0, y: 0 }}
+                          end={{ x: 1, y: 0 }}
+                          style={styles.viewDetailsGradient}
+                        >
+                          <Text style={styles.viewDetailsText}>Start Workout</Text>
+                          <Icon name="play" size={16} color={colors.text.inverse} />
+                        </LinearGradient>
+                      </View>
+                    </View>
                   </View>
-                ))}
-              </View>
-              <TouchableOpacity style={styles.viewDetailsButton}>
-                <Text style={styles.viewDetailsText}>View Details →</Text>
-              </TouchableOpacity>
-            </TouchableOpacity>
-          ))
-        )}
-      </ScrollView>
+                </TouchableOpacity>
+              ))
+            )}
+          </Animated.View>
+        </ScrollView>
+      </LinearGradient>
     </SafeAreaView>
   );
 };
@@ -75,126 +166,144 @@ const DayDetail: React.FC<DayDetailProps> = ({ route, navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+  },
+  gradientBackground: {
+    flex: 1,
   },
   header: {
-    backgroundColor: '#fff',
-    padding: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.lg,
+    paddingBottom: spacing.md,
   },
   backButton: {
-    marginBottom: 10,
+    width: 40,
+    height: 40,
+    borderRadius: borderRadius.lg,
+    backgroundColor: colors.background.secondary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: spacing.md,
+    ...colors.shadow.sm,
   },
-  backButtonText: {
-    fontSize: 16,
-    color: '#2196F3',
+  headerContent: {
+    flex: 1,
   },
   headerTitle: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#333',
+    ...typography.h2,
+    color: colors.text.primary,
+    marginBottom: spacing.xs,
   },
   headerSubtitle: {
-    fontSize: 14,
-    color: '#666',
-    marginTop: 5,
+    ...typography.body2,
+    color: colors.text.secondary,
   },
   scrollView: {
     flex: 1,
-    padding: 15,
+  },
+  scrollContent: {
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.xl,
+  },
+  restDayGradient: {
+    borderRadius: borderRadius.xl,
+    padding: 3,
+    marginTop: spacing.md,
   },
   restDayContainer: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 30,
+    backgroundColor: colors.background.secondary,
+    borderRadius: borderRadius.xl - 3,
+    padding: spacing.xl,
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 3.84,
-    elevation: 5,
   },
   restDayTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#4CAF50',
-    marginBottom: 10,
+    ...typography.h3,
+    color: colors.success.main,
+    marginTop: spacing.md,
+    marginBottom: spacing.sm,
   },
   restDayText: {
-    fontSize: 16,
-    color: '#666',
+    ...typography.body1,
+    color: colors.text.secondary,
     textAlign: 'center',
+    lineHeight: 24,
   },
   routineCard: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 20,
-    marginBottom: 15,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 3.84,
-    elevation: 5,
+    backgroundColor: colors.background.secondary,
+    borderRadius: borderRadius.xl,
+    flexDirection: 'row',
+    padding: spacing.md,
+    ...colors.shadow.md,
+  },
+  routineNumberContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: borderRadius.lg,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: spacing.md,
+  },
+  routineNumberText: {
+    ...typography.h4,
+    color: colors.text.inverse,
+    fontWeight: '700',
+  },
+  routineContent: {
+    flex: 1,
   },
   routineHeader: {
-    marginBottom: 10,
-  },
-  routineNumber: {
-    fontSize: 12,
-    color: '#999',
-    textTransform: 'uppercase',
-    fontWeight: '600',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.xs,
   },
   routineName: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 5,
+    ...typography.h5,
+    color: colors.text.primary,
+    flex: 1,
   },
   routineDescription: {
-    fontSize: 14,
-    color: '#666',
-    marginBottom: 15,
+    ...typography.body2,
+    color: colors.text.secondary,
+    marginBottom: spacing.md,
+    lineHeight: 18,
   },
   workoutsList: {
-    borderTopWidth: 1,
-    borderTopColor: '#f0f0f0',
-    paddingTop: 15,
-    marginBottom: 15,
+    marginBottom: spacing.md,
   },
   workoutItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 8,
-  },
-  workoutNumber: {
-    fontSize: 14,
-    color: '#999',
-    marginRight: 10,
-    width: 20,
+    marginBottom: spacing.sm,
+    gap: spacing.sm,
   },
   workoutName: {
-    fontSize: 15,
-    color: '#333',
+    ...typography.body2,
+    color: colors.text.primary,
     flex: 1,
   },
+  moreWorkouts: {
+    ...typography.caption,
+    color: colors.text.tertiary,
+    fontStyle: 'italic',
+    marginTop: spacing.xs,
+  },
   viewDetailsButton: {
-    backgroundColor: '#2196F3',
-    padding: 12,
-    borderRadius: 8,
+    borderRadius: borderRadius.lg,
+    overflow: 'hidden',
+  },
+  viewDetailsGradient: {
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    gap: spacing.xs,
   },
   viewDetailsText: {
-    fontSize: 16,
-    color: '#fff',
-    fontWeight: '600',
+    ...typography.button,
+    color: colors.text.inverse,
   },
 });
 

@@ -1,0 +1,27 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+metadata:
+  name: swole-base
+
+resources:
+  - namespace.yaml
+  - postgres-secret.yaml
+  - postgres-init-configmap.yaml
+  - app-config.yaml
+  - postgres-pvc.yaml
+  - postgres-service.yaml
+  - postgres-statefulset.yaml
+  - api-deployment.yaml
+  - api-service.yaml
+  - sync-cronjob.yaml
+  - seed-job.yaml
+  - ingress.yaml
+
+commonLabels:
+  app.kubernetes.io/name: swole
+  app.kubernetes.io/part-of: swole-fitness-app
+
+images:
+  - name: swole-api
+    newTag: latest

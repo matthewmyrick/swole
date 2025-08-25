@@ -1,158 +1,123 @@
 # Swole Kubernetes Deployment
 
-This directory contains all the Kubernetes manifests needed to deploy the Swole workout app on your home server.
+Simple Kubernetes deployment for the Swole fitness app backend on your home server.
 
-## Architecture Overview
+## Architecture
+
+- **PostgreSQL**: Database with persistent storage
+- **Swole API**: Go REST API service exposed via NodePort
+- **Sync Jobs**: CronJob for data maintenance
+- **Secrets**: Database credentials (basic secret for home server)
+
+## Prerequisites
+
+- Kubernetes cluster running on your home server
+- `kubectl` configured to connect to your cluster
+- Docker installed for building images
+
+## Quick Deploy
+
+1. **Deploy everything:**
+   ```bash
+   ./k8s/deploy.sh
+   ```
+
+2. **Just build the image:**
+   ```bash
+   ./k8s/deploy.sh build
+   ```
+
+3. **Destroy deployment:**
+   ```bash
+   ./k8s/deploy.sh destroy
+   ```
+
+## What Gets Deployed
+
+### Namespace: `swole`
+All resources are deployed in the `swole` namespace.
+
+### Services
+- **PostgreSQL**: Internal service for database access
+- **Swole API**: NodePort service exposed on port 30080
+
+### Storage
+- **PostgreSQL**: 10Gi persistent volume for database data
+
+### Jobs
+- **Seed Job**: Runs once to populate initial workout data
+- **Sync CronJob**: Daily maintenance (2 AM)
+
+## Accessing the API
+
+After deployment, the API will be accessible at:
+- **Health Check**: `http://<your-node-ip>:30080/health`
+- **API Endpoints**: `http://<your-node-ip>:30080/api/`
+
+The deploy script will show you the exact URL after deployment.
+
+## Configuration
+
+### Database
+- Database: `swole_db`
+- User: `postgres` 
+- Password: `postgres` (basic setup for home server)
+
+### API Endpoints
+- `GET /health` - Health check
+- `GET /api/week-schedule` - Get weekly workout schedule
+- `GET /api/routines` - Get all workout routines
+- `GET /api/routines/{id}` - Get specific routine
+- `POST /api/workouts/{id}/progress` - Update workout progress
+- `GET /api/progress` - Get user progress
+
+## Files Structure
 
 ```
-┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│   Mobile App    │    │   Go API Pod    │    │ PostgreSQL Pod  │
-│  (swoleMobile)  │───▶│  (swole-api)    │───▶│   (postgres)    │
-└─────────────────┘    └─────────────────┘    └─────────────────┘
-                                │                       ▲
-                                ▼                       │
-                       ┌─────────────────┐              │
-                       │ Python Data Job │──────────────┘
-                       │ (routine mgmt)  │
-                       └─────────────────┘
+k8s/
+├── base/
+│   ├── namespace.yaml              # Swole namespace
+│   ├── postgres-secret.yaml        # DB credentials
+│   ├── postgres-init-configmap.yaml # DB schema
+│   ├── app-config.yaml            # App configuration
+│   ├── postgres-pvc.yaml          # Persistent volume claim
+│   ├── postgres-service.yaml      # PostgreSQL service
+│   ├── postgres-statefulset.yaml  # PostgreSQL deployment
+│   ├── api-deployment.yaml        # API deployment
+│   ├── api-service.yaml           # API NodePort service
+│   ├── sync-cronjob.yaml          # Daily maintenance job
+│   ├── seed-job.yaml              # Initial data seeding
+│   └── kustomization.yaml         # Kustomize config
+├── deploy.sh                      # Deployment script
+├── create-sealed-secret.sh        # Sealed secret helper (optional)
+└── README.md                      # This file
 ```
 
-## Data Management Strategy
+## Troubleshooting
 
-### ✅ Database Schema Initialization
-- **Who**: Kubernetes PostgreSQL init scripts
-- **What**: Creates all tables, constraints, indexes
-- **When**: On PostgreSQL container startup
-- **Where**: `/docker-entrypoint-initdb.d/init.sql`
-
-### ✅ Routine Data Management  
-- **Who**: Python data job (`update_routines.py`)
-- **What**: Manages routine and workout definitions
-- **When**: On-demand via Job or scheduled via CronJob
-- **Where**: YAML files in ConfigMaps
-- **Preserves**: ALL user progress data (never touches `user_progress` table)
-
-### ✅ User Progress Data
-- **Who**: Go API handlers
-- **What**: Saves/retrieves user workout progress
-- **When**: Real-time as users update their workouts
-- **Where**: `user_progress` table in PostgreSQL
-- **Persistence**: Permanent (survives routine updates)
-
-## Deployment Steps
-
-### 1. Build Docker Images
-
+### Check pod status
 ```bash
-# Build Go API image
-cd /path/to/swoleBackend
-docker build -f Dockerfile.api -t swole-api:latest .
-
-# Build Python job image  
-docker build -f Dockerfile.python -t swole-python-job:latest .
-```
-
-### 2. Create Kubernetes Resources
-
-```bash
-# Create namespace
-kubectl apply -f k8s/namespace.yaml
-
-# Deploy PostgreSQL with init scripts
-kubectl apply -f k8s/postgres-deployment.yaml
-
-# Wait for PostgreSQL to be ready
-kubectl wait --for=condition=ready pod -l app=postgres -n swole --timeout=60s
-
-# Deploy Go API
-kubectl apply -f k8s/api-deployment.yaml
-
-# Wait for API to be ready
-kubectl wait --for=condition=ready pod -l app=swole-api -n swole --timeout=60s
-
-# Run initial data job to populate routines
-kubectl apply -f k8s/python-job.yaml
-```
-
-### 3. Verify Deployment
-
-```bash
-# Check all pods are running
 kubectl get pods -n swole
-
-# Check API health
-kubectl port-forward svc/swole-api-service 8080:8080 -n swole
-curl http://localhost:8080/health
-curl http://localhost:8080/health/db
-
-# Check database tables were created
-kubectl exec -it deployment/postgres -n swole -- psql -U postgres -d swole_db -c "\\dt"
-
-# Check routines were loaded
-curl http://localhost:8080/api/routines
 ```
 
-## Key Benefits
+### Check logs
+```bash
+kubectl logs -f deployment/swole-api -n swole
+kubectl logs -f statefulset/postgres -n swole
+```
 
-### 🔄 **Separation of Concerns**
-- **Database**: Handles schema, persistence, and constraints
-- **API**: Handles user requests and progress tracking  
-- **Python Job**: Handles routine configuration management
-- **Mobile App**: Handles user interface and experience
+### Check services
+```bash
+kubectl get services -n swole
+```
 
-### 📊 **Data Integrity**
-- User progress is **NEVER** lost during routine updates
-- Python job only touches `routines` and `workouts` tables
-- Database constraints ensure referential integrity
-- Unique constraints prevent duplicate progress entries
+### Manual seed job
+```bash
+kubectl delete job swole-seed-job -n swole
+kubectl apply -f k8s/base/seed-job.yaml
+```
 
-### 🚀 **Scalability**
-- API pods can be scaled horizontally (currently set to 2 replicas)
-- PostgreSQL uses persistent volumes for data durability
-- Python jobs run independently and can be scheduled
-
-### 🔧 **Maintenance**
-- Update routines by modifying ConfigMap and running Job
-- Monitor health with built-in health checks
-- Logs available via `kubectl logs`
-- Database backups via standard PostgreSQL tools
-
-## Configuration Updates
-
-### To Update Routine Definitions:
-
-1. **Update the ConfigMap**:
-   ```bash
-   kubectl edit configmap routines-yaml-config -n swole
-   ```
-
-2. **Run the data job**:
-   ```bash
-   kubectl delete job swole-data-update -n swole
-   kubectl apply -f k8s/python-job.yaml
-   ```
-
-3. **Verify changes**:
-   ```bash
-   curl http://localhost:8080/api/routines
-   ```
-
-### To Update Database Schema:
-1. Modify `postgres-init.sql`
-2. Update the ConfigMap in `postgres-deployment.yaml`
-3. Delete and recreate PostgreSQL pod (⚠️ **DATA LOSS** - backup first!)
-
-## Security Notes
-
-- Change default PostgreSQL passwords in production
-- Use proper secrets management
-- Restrict ingress to known networks
-- Enable TLS/SSL for production
-- Regular security updates for base images
-
-## Monitoring
-
-- Health checks are configured for both API and database
-- Prometheus metrics can be added to the Go API
-- Log aggregation via standard K8s logging
-- Resource limits prevent resource exhaustion
+### Access PostgreSQL directly
+```bash
+kubectl exec -it postgres-0 -n swole -- psql -U postgres -d swole_db
+```

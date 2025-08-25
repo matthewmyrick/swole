@@ -17,14 +17,23 @@ func (db *DB) SeedData() error {
 		return nil
 	}
 	
-	// Create default user
+	// Get or create default user
 	var userID string
-	err = db.QueryRow(`
-		INSERT INTO users (email, name) 
-		VALUES ('user@example.com', 'Default User') 
-		RETURNING id`).Scan(&userID)
+	err = db.QueryRow(`SELECT id FROM users WHERE email = 'user@example.com' LIMIT 1`).Scan(&userID)
 	if err != nil {
-		return err
+		// User doesn't exist, create it
+		err = db.QueryRow(`
+			INSERT INTO users (email, name) 
+			VALUES ('user@example.com', 'Default User') 
+			RETURNING id`).Scan(&userID)
+		if err != nil {
+			log.Printf("Warning: Could not create default user: %v", err)
+			// Try to get any existing user as fallback
+			err = db.QueryRow(`SELECT id FROM users LIMIT 1`).Scan(&userID)
+			if err != nil {
+				return err
+			}
+		}
 	}
 	
 	// Create routines and workouts

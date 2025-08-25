@@ -1,0 +1,106 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: swole-api
+  namespace: swole
+  labels:
+    app.kubernetes.io/name: swole
+    app.kubernetes.io/component: api
+    app.kubernetes.io/version: "1.0.0"
+spec:
+  replicas: 2
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: swole
+      app.kubernetes.io/component: api
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: swole
+        app.kubernetes.io/component: api
+        app.kubernetes.io/version: "1.0.0"
+    spec:
+      containers:
+        - name: api
+          image: swole-api:latest  # This will be overridden in kustomize overlays
+          imagePullPolicy: Always
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+          env:
+            - name: PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: PORT
+            - name: GIN_MODE
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: GIN_MODE
+            - name: DATABASE_URL
+              value: "postgres://$(DB_USER):$(DB_PASSWORD)@$(DB_HOST):$(DB_PORT)/$(DB_NAME)?sslmode=disable"
+            - name: DB_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: DB_HOST
+            - name: DB_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: DB_PORT
+            - name: DB_NAME
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: DB_NAME
+            - name: DB_USER
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: username
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: password
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "256Mi"
+              cpu: "500m"
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 3
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 65534
+            capabilities:
+              drop:
+                - ALL
+      securityContext:
+        fsGroup: 65534
